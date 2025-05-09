@@ -3,14 +3,15 @@ import telebot
 from flask import Flask, request
 
 API_TOKEN = os.environ.get("BOT_TOKEN")
-WEBHOOK_URL = os.environ.get("RENDER_EXTERNAL_URL") + API_TOKEN
+RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")  # مثل: https://telegram-price-bot-h2u9.onrender.com/
+WEBHOOK_URL = f"{RENDER_URL}{API_TOKEN}"
 
 bot = telebot.TeleBot(API_TOKEN)
 server = Flask(__name__)
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "سلام! لطفاً عکس محصول را بفرست تا بررسی کنم.")
+    bot.reply_to(message, "سلام زبیر اینجاست! عکس محصولتو بفرست تا بررسی کنم.")
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
@@ -18,17 +19,17 @@ def handle_photo(message):
     downloaded_file = bot.download_file(file_info.file_path)
     with open("received_image.jpg", 'wb') as f:
         f.write(downloaded_file)
-    bot.reply_to(message, "عکس دریافت شد. (در این نسخه فقط دریافت می‌شود.)")
+    bot.reply_to(message, "عکس دریافت شد. (پردازش قیمت در نسخه بعدی اضافه می‌شود)")
 
-@server.route("/" + API_TOKEN, methods=['POST'])
-def get_message():
+@server.route(f"/{API_TOKEN}", methods=['POST'])
+def receive_update():
     json_str = request.get_data().decode('utf-8')
     update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "ok", 200
 
 @server.route("/")
-def index():
+def set_webhook():
     bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
     return "Webhook set", 200
