@@ -1,27 +1,29 @@
 import os
-from flask import Flask, request
 import telebot
+from flask import Flask, request
 
-API_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+# دریافت توکن و آدرس وبهوک از متغیرهای محیطی
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
-bot = telebot.TeleBot(API_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
-# ست کردن Webhook
+# حذف وبهوک قبلی و تنظیم وبهوک جدید
 bot.remove_webhook()
 bot.set_webhook(url=WEBHOOK_URL)
 
-# هندل کردن پیام‌های دریافتی از تلگرام
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, "سلام زبیر! رباتت فعاله.")
+# پاسخ به دستور /start
+@bot.message_handler(commands=['start'])
+def welcome(message):
+    bot.reply_to(message, "سلام زبیر! رباتت فعاله. لطفاً عکس یا پیام بفرست.")
 
+# پاسخ به همه پیام‌ها
 @bot.message_handler(func=lambda message: True)
 def echo_all(message):
     bot.reply_to(message, message.text)
 
-# روت اصلی که تلگرام بهش POST می‌فرسته
+# مسیر دریافت پیام‌ها از تلگرام (Webhook)
 @app.route("/", methods=["POST"])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -30,8 +32,8 @@ def webhook():
         bot.process_new_updates([update])
         return '', 200
     else:
-        return 'Invalid content type', 403
+        return 'Invalid request', 403
 
-# اجرا در پورت رندر
+# اجرای سرور روی پورت رندر
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
