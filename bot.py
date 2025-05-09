@@ -1,33 +1,37 @@
 import os
-import telebot
 from flask import Flask, request
+import telebot
 
-# دریافت توکن و آدرس webhook از متغیرهای محیطی
-API_TOKEN = os.environ.get("BOT_TOKEN")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # مثلاً https://telegram-price-bot-h2u9.onrender.com/webhook
+API_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 bot = telebot.TeleBot(API_TOKEN)
 app = Flask(__name__)
 
-# پاسخ به پیام‌های /start
-@bot.message_handler(commands=['start'])
-def welcome(message):
-    bot.reply_to(message, "سلام! ربات با موفقیت فعاله. لطفاً عکس یا پیام بفرست.")
+# ست کردن Webhook
+bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL)
 
-# مسیر webhook که تلگرام پیام‌ها رو بهش می‌فرسته
-@app.route('/webhook', methods=['POST'])
+# هندل کردن پیام‌های دریافتی از تلگرام
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.reply_to(message, "سلام زبیر! رباتت فعاله.")
+
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
+    bot.reply_to(message, message.text)
+
+# روت اصلی که تلگرام بهش POST می‌فرسته
+@app.route("/", methods=["POST"])
 def webhook():
-    update = telebot.types.Update.de_json(request.stream.read().decode('utf-8'))
-    bot.process_new_updates([update])
-    return 'OK', 200
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return '', 200
+    else:
+        return 'Invalid content type', 403
 
-# فقط برای تست ربات روی دامنه اصلی
-@app.route('/')
-def index():
-    return 'ربات فعاله', 200
-
-# تنظیم webhook هنگام اجرا
-if __name__ == '__main__':
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+# اجرا در پورت رندر
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
