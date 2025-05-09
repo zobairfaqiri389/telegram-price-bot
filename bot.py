@@ -1,25 +1,33 @@
-import telebot
 import os
+import telebot
 from flask import Flask, request
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+# دریافت توکن و آدرس webhook از متغیرهای محیطی
+API_TOKEN = os.environ.get("BOT_TOKEN")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # مثلاً https://telegram-price-bot-h2u9.onrender.com/webhook
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(API_TOKEN)
 app = Flask(__name__)
 
+# پاسخ به پیام‌های /start
 @bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, "سلام! ربات با موفقیت راه‌اندازی شد.")
+def welcome(message):
+    bot.reply_to(message, "سلام! ربات با موفقیت فعاله. لطفاً عکس یا پیام بفرست.")
 
-@app.route('/', methods=['POST'])
+# مسیر webhook که تلگرام پیام‌ها رو بهش می‌فرسته
+@app.route('/webhook', methods=['POST'])
 def webhook():
-    json_str = request.get_data().decode('UTF-8')
-    update = telebot.types.Update.de_json(json_str)
+    update = telebot.types.Update.de_json(request.stream.read().decode('utf-8'))
     bot.process_new_updates([update])
-    return "ok", 200
+    return 'OK', 200
 
+# فقط برای تست ربات روی دامنه اصلی
+@app.route('/')
+def index():
+    return 'ربات فعاله', 200
+
+# تنظیم webhook هنگام اجرا
 if __name__ == '__main__':
     bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
